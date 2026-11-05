@@ -113,14 +113,6 @@ import { errorMessage } from '../../core/utils/error-message';
                   @if (isOfficer && record.assignedTo && !isAssignedToCurrentOfficer) { <p class="empty-note">Only the assigned officer can reassign this claim.</p> }
                 </section>
               }
-            <section class="panel">
-              <div class="panel-heading"><div><h2>Update status</h2><p>Only valid workflow transitions are offered</p></div></div>
-              @if (isOfficer && !isAssignedToCurrentOfficer) {
-                <p class="empty-note">{{ record.assignedTo ? 'Only the assigned officer can update this claim’s status.' : 'Assign this claim to yourself before updating its status.' }}</p>
-              } @else if (nextStatuses.length) {
-                <form [formGroup]="statusForm" (ngSubmit)="updateStatus()"><label>New status<select formControlName="newStatus">@for (status of nextStatuses; track status) { <option [value]="status">{{ titleCase(status) }}</option> }</select></label><label>Comment (optional)<textarea rows="3" formControlName="comment" placeholder="Add a note to the activity history"></textarea></label><button class="button button-primary full-button" [disabled]="saving || !canUpdateClaimStatus">{{ saving ? 'Updating…' : 'Update status' }}</button></form>
-              } @else { <p class="empty-note">No further status transitions are available.</p> }
-            </section>
             }
             @if (isOfficer && record.status === 'IN_REVIEW') {
             <section class="panel">
