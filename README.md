@@ -1,37 +1,67 @@
-# Chubb APAC Claims Management — Frontend
+# Claims Frontend — Developer Guide
 
-Standalone Angular demonstration UI for claimant, claims officer and claims manager workflows. The application uses the Spring Boot API at `http://localhost:8080/api`.
+Angular standalone application for the Chubb APAC claims demo. It provides claimant, claims officer and claims manager workspaces and connects to the sibling Spring Boot backend.
 
-## Run locally
+## Requirements
 
-Requirements: Node.js `^22.22.3`, `^24.15.0` or `^26.0.0` and npm.
+- Node.js `^22.22.3`, `^24.15.0` or `^26.0.0`
+- npm (included with Node.js)
+- The sibling `claims-backend` project for API-backed workflows
+
+On Windows PowerShell, use `npm.cmd` if `npm` is not recognized.
+
+## Install and run
+
+From the frontend repository root:
 
 ```powershell
 npm.cmd install
 npm.cmd start
 ```
 
-Open [http://localhost:4200](http://localhost:4200). To build and test:
+Open [http://localhost:4200](http://localhost:4200).
+
+Run a production build and the test suite:
 
 ```powershell
 npm.cmd run build
-npm.cmd test
+npm.cmd test -- --watch=false
 ```
 
-Start the backend separately from the sibling `claims-backend` repository. Its API allows the Angular dev origin `http://localhost:4200`. The backend expects Kafka and its orchestration service for asynchronous claim creation; use that repository's Docker Compose and Maven instructions.
+## Run with the backend
 
-## Demo sign-in credentials
+Start PostgreSQL, Kafka, and both Spring Boot services using the instructions in the sibling backend's README. The frontend calls the public API at `http://localhost:8080/api`; the API service forwards applicable requests to orchestration on port `8081`.
+
+The frontend development origin is `http://localhost:4200`. The backend API must allow this origin for browser requests. Claim submission is asynchronous: the API accepts the claim and publishes it to Kafka, then orchestration persists it. The claim may take a short time to appear in lists and details.
+
+### Configure the API URL
+
+The default API base URL is defined in `src/environments/environment.ts`:
+
+```ts
+apiUrl: 'http://localhost:8080/api'
+```
+
+Change this value when using a different API host or port. Keep the `/api` path segment.
+
+## Demo sign-in
+
+Choose a role tab on the sign-in page and use one of the local demo accounts:
 
 | Role | Username/email | Password |
 |---|---|---|
 | Claimant | `john.tan@example.com` | `ClaimantDemo!26` |
-| Claims Officer | `officer.a` | `OfficerDemo!26` |
+| Claims Officer A | `officer.a` | `OfficerDemo!26` |
+| Claims Officer B | `officer.b` | `OfficerDemo!26` |
 | Claims Manager | `manager` | `ManagerDemo!26` |
 
-The orchestration service verifies these credentials against `claimant_accounts` and `claims_staff_accounts` through `POST /api/auth/login`. The backend stores only PBKDF2-SHA256 password hashes; Flyway migration `V4__seed_demo_accounts.sql` adds the local demo accounts. The selected identity is stored in browser local storage after login. This is a localhost demo login only: it does not issue a token or protect the other API endpoints. Registration at `/register` is intentionally a non-persistent placeholder.
+The backend seeds these accounts with Flyway. The frontend sends credentials to `POST /api/auth/login` and stores the returned identity in browser local storage. This is demo-only login: it issues no token and does not secure other API endpoints. Registration is a placeholder and does not create an account.
 
-## Backend integration
+## Development notes
 
-API contracts were checked against the sibling Spring Boot controllers and DTOs. The UI uses `POST /api/claims`, claimant listing/detail/history and information-response routes, staff queue/assignment/status/information-request/decision routes, and staff dashboard summary/workload routes. Update `src/environments/environment.ts` to change the API base URL.
-
-The claimant portal loads claim types from `GET /api/config/motor-claims` and `GET /api/config/property-claims`. Each form loads its options from its matching endpoint; if a request fails, it shows the API error instead of using stale hardcoded options. `GET /api/claimant/policies?claimantEmail=...` populates My Policies on the claimant dashboard and the active-policy selector on the submission form. Selecting a policy fills its number, market, currency and the account name, email and phone returned by the backend database. The Motor and Property forms submit their claim-specific detail objects using the backend DTO fields. Required fields have inline validation and markers; estimated loss and currency are presented in one grouped field while remaining separate values in the API request. The backend does not accept file contents, and the form explicitly notes that uploads are not available. The backend has no notification or settlement API, so messages are based on current claim statuses and settlement figures are only shown when present in claims/dashboard data. Dashboard exposure has no currency conversion metadata; amounts are shown without a currency symbol.
+- Use the backend's actual request and response contracts when changing API integration; shared frontend interfaces are in `src/app/core/models/claim.ts`, and HTTP methods are in `src/app/core/services/claim-api.service.ts`.
+- Motor and Property claim forms are separate routes and load their dropdown/checkbox choices from the backend configuration endpoints.
+- Active policies and officer reassignment choices are retrieved from backend APIs. Do not hardcode account, policy or option data.
+- Claim forms accept up to five supporting PDF, JPEG, PNG, text or Word files (10 MB each, 20 MB total). Claim files are uploaded after asynchronous claim creation; officer information-request files and claimant response files are stored with their request.
+- Officers see a read-only waiting state while additional information is outstanding; actions return after all open requests are answered.
+- Notifications and settlement behavior depend on the endpoints implemented by the backend. The UI does not simulate successful API operations.

@@ -1,8 +1,9 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin, map, Observable } from 'rxjs';
+import { forkJoin, map, Observable, retry, throwError, timer } from 'rxjs';
 import { ClaimantPolicy, ClaimFormOptions, ClaimSubmissionResponse, ClaimType } from '../../core/models/claim';
 import { ClaimApiService } from '../../core/services/claim-api.service';
 import { SessionService } from '../../core/services/session.service';
@@ -76,6 +77,11 @@ export class ClaimTypeSelectionPage implements OnInit {
         <p>We received your {{ claimType.toLowerCase() }} claim. It may take a short time to appear in My Claims while it is registered.</p>
         <div class="receipt-reference"><span>CLAIM REFERENCE</span><strong>{{ submitted.claimReference }}</strong></div>
         <div class="receipt-reference"><span>STATUS</span><span class="status-badge status-new">{{ titleCase(submitted.status) }}</span></div>
+        @if (attachmentFiles().length) {
+          @if (uploadingAttachments()) { <p class="field-hint">Uploading supporting documents…</p> }
+          @if (attachmentsUploaded()) { <p class="field-hint">Supporting documents uploaded successfully.</p> }
+          @if (attachmentUploadError()) { <p class="field-error">{{ attachmentUploadError() }}</p><button class="button button-secondary" type="button" [disabled]="uploadingAttachments()" (click)="uploadAttachments(submitted.claimReference)">Retry document upload</button> }
+        }
         <div class="receipt-note">{{ submitted.message || 'Your claim has been accepted for registration.' }} You can refresh My Claims shortly to check for updates.</div>
         <a class="button button-primary" routerLink="/claimant/claims">Go to My Claims →</a>
       </section>
@@ -160,7 +166,10 @@ export class ClaimTypeSelectionPage implements OnInit {
             @if (showError('currency')) { <small class="validation-message">{{ fieldError('currency') }}</small> }
           </div>
         </div>
-        <p class="form-capability-note">Supporting file uploads are not available in the current claims API. This form submits the claim information only.</p>
+        <div class="form-section-title section-spaced"><h2>Supporting documents</h2><p>Attach relevant evidence such as photos, invoices or reports (up to 5 files, 10 MB each).</p></div>
+        <label>Choose documents<input type="file" accept=".pdf,.jpg,.jpeg,.png,.txt,.doc,.docx" multiple (change)="onAttachmentSelection($event)"></label>
+        @if (attachmentFiles().length) { <p class="field-hint">Selected: {{ attachmentFileNames }}</p> }
+        @if (attachmentError()) { <p class="validation-message">{{ attachmentError() }}</p> }
         <label class="declaration"><input type="checkbox" [checked]="declared" (change)="declared = $any($event.target).checked"><span>I confirm that the information provided is accurate to the best of my knowledge.</span></label>
         @if (formError) { <p class="field-error">{{ formError }}</p> }
         <div class="wizard-actions">
@@ -211,6 +220,11 @@ export class ClaimFormPage implements OnInit {
   });
   readonly receipt = signal<ClaimSubmissionResponse | null>(null);
   readonly submitting = signal(false);
+  readonly attachmentFiles = signal<File[]>([]);
+  readonly attachmentError = signal('');
+  readonly attachmentUploadError = signal('');
+  readonly uploadingAttachments = signal(false);
+  readonly attachmentsUploaded = signal(false);
   declared = false;
   readonly error = signal('');
   formError = '';
@@ -235,6 +249,10 @@ export class ClaimFormPage implements OnInit {
       this.form.controls.areasAffected.updateValueAndValidity();
       this.form.controls.propertyType.updateValueAndValidity();
     }
+  }
+
+  get attachmentFileNames(): string {
+    return this.attachmentFiles().map(file => file.name).join(', ');
   }
 
   activePolicies(): ClaimantPolicy[] {
@@ -406,8 +424,60 @@ export class ClaimFormPage implements OnInit {
       }),
     };
     this.api.submitClaim(request).subscribe({
-      next: response => { this.receipt.set(response); this.submitting.set(false); },
+      next: response => {
+        this.receipt.set(response);
+        this.submitting.set(false);
+        if (this.attachmentFiles().length) this.uploadAttachments(response.claimReference);
+      },
       error: error => { this.error.set(errorMessage(error)); this.submitting.set(false); },
+    });
+  }
+
+  onAttachmentSelection(event: Event): void {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const files = Array.from(input.files ?? []);
+    const totalSize = files.reduce((total, file) => total + file.size, 0);
+    this.attachmentError.set('');
+    if (files.length > 5) {
+      this.attachmentError.set('Select no more than 5 files.');
+    } else if (files.some(file => file.size > 10 * 1024 * 1024)) {
+      this.attachmentError.set('Each file must be 10 MB or smaller.');
+    } else if (totalSize > 20 * 1024 * 1024) {
+      this.attachmentError.set('The selected files must total 20 MB or less.');
+    } else {
+      this.attachmentFiles.set(files);
+      this.attachmentUploadError.set('');
+      this.attachmentsUploaded.set(false);
+      return;
+    }
+    this.attachmentFiles.set([]);
+    input.value = '';
+  }
+
+  uploadAttachments(claimReference: string): void {
+    const uploadedBy = this.session.user()?.email;
+    if (!uploadedBy || !this.attachmentFiles().length) return;
+    this.uploadingAttachments.set(true);
+    this.attachmentUploadError.set('');
+    this.api.uploadClaimDocuments(claimReference, this.attachmentFiles(), uploadedBy).pipe(
+      retry({
+        count: 30,
+        delay: (error: unknown) => error instanceof HttpErrorResponse && error.status === 404
+          ? timer(300)
+          : throwError(() => error),
+      }),
+    ).subscribe({
+      next: () => {
+        this.uploadingAttachments.set(false);
+        this.attachmentsUploaded.set(true);
+      },
+      error: error => {
+        this.uploadingAttachments.set(false);
+        this.attachmentUploadError.set(
+          `The claim was accepted, but document upload failed: ${errorMessage(error)}`,
+        );
+      },
     });
   }
 

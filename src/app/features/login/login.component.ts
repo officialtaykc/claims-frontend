@@ -38,8 +38,13 @@ import { SessionService } from '../../core/services/session.service';
 
         <div class="demo-credentials">
           <b>Local demo credentials</b>
-          <span>{{ demoIdentifier }}</span>
-          <span>{{ demoPassword }}</span>
+          @if (role === 'officer') {
+            <span>Officer A: <code>officer.a</code> / <code>OfficerDemo!26</code></span>
+            <span>Officer B: <code>officer.b</code> / <code>OfficerDemo!26</code></span>
+          } @else {
+            <span>{{ demoIdentifier }}</span>
+            <span>{{ demoPassword }}</span>
+          }
         </div>
         <p class="register-link">New to the platform? <a routerLink="/register">Register</a></p>
         <div class="login-foot">Demonstration access · Credentials are verified by the local backend</div>

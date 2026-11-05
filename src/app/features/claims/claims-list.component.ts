@@ -14,6 +14,7 @@ import { errorMessage } from '../../core/utils/error-message';
     @if (view === 'requests') {
       <div class="page-heading"><div><div class="eyebrow">CLAIMANT PORTAL</div><h1>Information requests</h1><p>Review and respond to requests from your claims team.</p></div><button class="button button-secondary" type="button" (click)="load()">↻ Refresh</button></div>
       @if (error()) { <div class="alert error">{{ error() }}</div> }
+      @if (responseSuccess()) { <div class="alert success">{{ responseSuccess() }}</div> }
       @if (loading()) { <div class="loading-panel">Loading information requests…</div> }
       @if (requests.length) {
         <div class="request-grid">
@@ -22,7 +23,15 @@ import { errorMessage } from '../../core/utils/error-message';
               <a class="ref-link" [routerLink]="['/claimant/claims', item.claim.claimReference]">{{ item.claim.claimReference }}</a>
               <h2>{{ item.request.requestMessage }}</h2>
               @if (item.request.responseMessage) { <p class="response-snippet">Your response: {{ item.request.responseMessage }}</p> }
-              <div class="request-foot"><span>Due {{ item.request.dueDate | date:'dd MMM yyyy' }}</span>@if (item.request.requestStatus === 'OPEN') { <a [routerLink]="['/claimant/claims', item.claim.claimReference]">Respond to request →</a> }</div>
+              @if (item.request.requestStatus === 'OPEN') {
+                <label class="request-response">Your response<textarea [(ngModel)]="responseTexts[item.request.id]" rows="3" placeholder="Enter your response to the claims team"></textarea></label>
+                <label>Attach supporting documents<input type="file" accept=".pdf,.jpg,.jpeg,.png,.txt,.doc,.docx" multiple (change)="onResponseFilesSelected($event, item.request.id)"></label>
+                @if (responseFiles[item.request.id]?.length) { <p class="subtle">Selected: {{ fileNames(responseFiles[item.request.id]) }}</p> }
+                @if (responseErrors[item.request.id]) { <p class="field-error">{{ responseErrors[item.request.id] }}</p> }
+                <div class="request-foot"><span>Due {{ item.request.dueDate | date:'dd MMM yyyy' }} · Up to 5 files (10 MB each)</span><button class="button button-primary" type="button" [disabled]="(!responseTexts[item.request.id]?.trim() && !responseFiles[item.request.id]?.length) || !!responseErrors[item.request.id] || respondingId === item.request.id" (click)="respondToRequest(item)">{{ respondingId === item.request.id ? 'Sending…' : 'Send response' }}</button></div>
+              } @else {
+                <div class="request-foot"><span>Due {{ item.request.dueDate | date:'dd MMM yyyy' }} · Responded {{ item.request.respondedAt | date:'dd MMM yyyy' }}</span></div>
+              }
             </article>
           }
         </div>
@@ -81,7 +90,12 @@ export class ClaimsListPage implements OnInit {
   marketFilter = '';
   assignedFilter = '';
   dateSort: 'newest' | 'oldest' = 'newest';
-  readonly statuses: ClaimStatus[] = ['NEW', 'IN_REVIEW', 'ADDITIONAL_INFO_REQUIRED', 'PENDING_DECISION', 'APPROVED', 'PARTIALLY_APPROVED', 'REJECTED', 'SETTLEMENT_PENDING', 'SETTLED', 'CLOSED'];
+  responseTexts: Record<string, string> = {};
+  responseFiles: Record<string, File[]> = {};
+  responseErrors: Record<string, string> = {};
+  respondingId = '';
+  readonly responseSuccess = signal('');
+  readonly statuses: ClaimStatus[] = ['NEW', 'IN_REVIEW', 'ADDITIONAL_INFO_REQUIRED', 'PENDING_DECISION', 'APPROVED', 'PARTIALLY_APPROVED', 'REJECTED', 'SETTLEMENT_PENDING', 'SETTLED'];
 
   get isClaimant(): boolean { return this.session.user()?.role === 'claimant'; }
   get userEmail(): string { return this.session.user()?.email ?? ''; }
@@ -123,6 +137,55 @@ export class ClaimsListPage implements OnInit {
     });
   }
 
+  fileNames(files: File[] | undefined): string {
+    return (files ?? []).map(file => file.name).join(', ');
+  }
+
+  onResponseFilesSelected(event: Event, requestId: string): void {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const files = Array.from(input.files ?? []);
+    const totalSize = files.reduce((total, file) => total + file.size, 0);
+    const error = files.length > 5
+      ? 'Select no more than 5 files.'
+      : files.some(file => file.size > 10 * 1024 * 1024)
+        ? 'Each file must be 10 MB or smaller.'
+        : totalSize > 20 * 1024 * 1024
+          ? 'The selected files must total 20 MB or less.'
+          : '';
+    this.responseErrors[requestId] = error;
+    if (error) {
+      input.value = '';
+      this.responseFiles[requestId] = [];
+      return;
+    }
+    this.responseFiles[requestId] = files;
+  }
+
+  respondToRequest(item: { claim: Claim; request: InformationRequest }): void {
+    const response = this.responseTexts[item.request.id]?.trim() ?? '';
+    const files = this.responseFiles[item.request.id] ?? [];
+    if (item.request.requestStatus !== 'OPEN' || (!response && !files.length)
+        || this.responseErrors[item.request.id]) return;
+    this.respondingId = item.request.id;
+    this.error.set('');
+    this.responseSuccess.set('');
+    this.api.respondToInformationRequest(item.claim.claimReference, item.request.id, response, files).subscribe({
+      next: () => {
+        this.responseTexts[item.request.id] = '';
+        this.responseFiles[item.request.id] = [];
+        this.responseErrors[item.request.id] = '';
+        this.respondingId = '';
+        this.responseSuccess.set('Your response has been sent to the claims team.');
+        this.load();
+      },
+      error: error => {
+        this.respondingId = '';
+        this.error.set(errorMessage(error));
+      },
+    });
+  }
+
   titleCase(value: string): string { return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, char => char.toUpperCase()); }
   statusClass(status: ClaimStatus): string { return `status-${status.toLowerCase().replaceAll('_', '-')}`; }
   activityTitle(status: ClaimStatus): string {
@@ -133,10 +196,9 @@ export class ClaimsListPage implements OnInit {
       PENDING_DECISION: 'Assessment is complete',
       APPROVED: 'Your claim has been approved',
       PARTIALLY_APPROVED: 'Your claim has been partially approved',
-      REJECTED: 'A decision has been recorded',
+      REJECTED: 'Your claim was not approved',
       SETTLEMENT_PENDING: 'Settlement is being processed',
       SETTLED: 'Settlement processed',
-      CLOSED: 'Your claim is closed',
     };
     return titles[status] ?? 'Claim updated';
   }

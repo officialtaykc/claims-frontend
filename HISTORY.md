@@ -115,3 +115,59 @@ The user asked whether the sibling `claims-backend` repository is accessible and
 - The user requested checkbox selection for the multi-select “Areas affected” property claim field.
 - Replaced the native multi-select dropdown with an accessible, styled checkbox list populated from the existing dynamic backend options. Selection remains an array in the form and is serialized into the existing backend `affectedAreas` string on submission; required-field validation remains intact.
 - Added a test verifying multiple configured areas can be selected. Angular build passed and all 9 tests passed.
+
+## 2026-11-05 — Manager decision numeric amount
+
+- The user reported `value.decisionAmount.trim is not a function` when submitting a manager decision.
+- Removed the string-only trim assumption for the number input and normalize the value with `Number`, omitting only an empty amount and rejecting non-finite or negative values.
+- Added a regression test that enters a numeric amount through the HTML number control and verifies the decision request submits it as a number and refreshes the claim/history afterward.
+- Angular build passed and all 12 tests passed.
+
+## 2026-11-05 — Reassign claims through an officer picker
+
+- The user requested removing the inline assignment field/button and providing a reassignment popup with active officers loaded from the backend.
+- Added `GET /api/staff/officers` via the existing API proxy, backed by active OFFICER accounts in `claims_staff_accounts`; the response includes username, full name and email, and does not expose credentials.
+- Replaced the inline assignment form with an Assign/Reassign button and modal picker. The dialog loads officers on open, shows loading/error/empty states, submits the selected officer email via the existing assignment endpoint, then refreshes the claim details.
+- Added frontend tests for officer lookup and end-to-end dialog assignment. The Angular build and all 14 tests passed.
+- Backend test compilation exposed a missing `ClaimDocument` import in the already-modified `ClaimService`; added the import to unblock compilation and verified the orchestration module build/tests.
+
+## 2026-11-05 — Display officer full names in assignment UI
+
+- The user requested showing an officer's first and last name instead of their username.
+- Updated the reassignment dropdown to display only the full name. The current assignee label now resolves the stored email/username against the active officer directory and displays the full name; it avoids displaying an identifier if no matching directory record exists.
+- Added assertions for full-name display. All 16 frontend tests passed.
+
+## 2026-11-05 — Hide reassignment after a claim decision
+
+- The user requested hiding claim reassignment once a claim is approved, partially approved or rejected.
+- Hid the assignment panel and any open reassignment dialog after a decision is recorded, including subsequent settlement statuses. Reassignment action is guarded against opening after the claim reaches those stages.
+- Added a test verifying the panel is absent for approved, partially approved, rejected, settlement-pending and settled claims.
+
+## 2026-11-05T15:18:45.568+08:00 — Manager approval and payment workflow
+
+> during the "In review" stage, if no additional documents required, the claims staff should be able to submit the claims to a manager for approval (to ensure a maker and checker) flow. the claims will then transition into a Pending Decision stage, for "Approved", "Rejected" or ""Partially Approved". upon approval for example, do ensure that you write into a kafka topic for the payment team to process. the status should then transition into "SETTLEMENT_PENDING", i am not gonna implement the payment processing portion(that should be another microservice team). but simulate a short delay (mock) for the response to come back to us via another kafka topic. this should be event driven, upon the status update from payment team, we should transition the status to SETTLED. tehnically i dont need a CLOSED status, the final status should always be SETTLED or REJECTED. so remove the CLOSED status for me.
+
+- Added the officer-to-manager handoff and a separate manager-only decision form; approval outcomes require a decision amount and the assigned officer cannot decide their own claim.
+- Approved and partially approved claims enter `SETTLEMENT_PENDING`, publish a payment request to Kafka, and move to `SETTLED` after the mock processor emits a delayed completion event.
+- Removed `CLOSED` from frontend/backend status models and added Flyway V7 to normalize any existing closed claims and status history to final `SETTLED` or `REJECTED` states.
+
+## 2026-11-05T15:36:18.232+08:00 — Add Officer B demo login credentials
+
+> help include the credentials in the login for officer b as well
+
+- Added Officer B's username and password to the officer login's local demo credentials panel and the README credentials table.
+
+## 2026-11-05T15:59:23.914+08:00 — Supporting document uploads and officer workflow lock
+
+> by the way i noticed there is no upload supporting document function in the claims submission screen, as well as when the officer is requesting additional information back from the claimant. during this transition change, by right the officer shouldnt be able to transition the status or do anything anymore (on angular frontend). do help me implement this. as for the attachment upload could u use a blob storage in db(create a new table for attachments linked to the claims table because can attach multiple attachments.). implement both backend and frontend for this
+
+- Added supporting document selection to claim submission, officer information requests, and claimant responses; claim attachments can be downloaded from the claim view.
+- The officer view is read-only while a claim awaits claimant information; controls return after all open requests are answered and the claim returns to `IN_REVIEW`.
+
+## 2026-11-05 — Officer recommendation and claimant information responses
+
+- The user requested that officers choose the approve/partial-approve/reject recommendation on claim details, with managers reviewing and confirming or overriding it, and that claimants be able to respond to open information requests with text and attachments.
+- Added officer recommendation outcome, amount and rationale to the officer claim workflow. Submitting it moves the claim to manager review; the manager can approve the recommendation as the claim decision or reject it with a required note to return it to the officer for reassessment.
+- Persisted the officer recommendation in the backend using Flyway V9. Added the manager recommendation-return endpoint and included recommendation data only in the staff claim-detail response; claimant claim-list/detail responses do not expose this internal recommendation.
+- Added a text and multi-file response form directly to the claimant Information Requests page, with existing attachment size/count limits, API error display and automatic listing refresh after submit. The claim details page keeps its response form as well.
+- Validation: Angular production build passed; all 21 frontend tests passed; the backend orchestration module clean compile and tests passed (2 tests).

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   Claim,
+  ClaimDocument,
   ClaimantPolicy,
   ClaimFilters,
   ClaimFormOptions,
@@ -16,6 +17,7 @@ import {
   InformationRequest,
   LoginRequest,
   LoginResponse,
+  StaffOfficer,
   WorkloadResponse,
 } from '../models/claim';
 import { environment } from '../../../environments/environment';
@@ -40,6 +42,23 @@ export class ClaimApiService {
     return this.http.post<ClaimSubmissionResponse>(`${environment.apiUrl}/claims`, request);
   }
 
+  uploadClaimDocuments(reference: string, files: File[], uploadedBy: string): Observable<ClaimDocument[]> {
+    const body = new FormData();
+    body.append('uploadedBy', uploadedBy);
+    files.forEach(file => body.append('files', file, file.name));
+    return this.http.post<ClaimDocument[]>(
+      `${environment.apiUrl}/claims/${encodeURIComponent(reference)}/documents`,
+      body,
+    );
+  }
+
+  downloadClaimDocument(reference: string, documentId: string): Observable<Blob> {
+    return this.http.get(
+      `${environment.apiUrl}/claims/${encodeURIComponent(reference)}/documents/${encodeURIComponent(documentId)}/content`,
+      { responseType: 'blob' },
+    );
+  }
+
   getMyClaims(email: string): Observable<Claim[]> {
     const params = new HttpParams().set('claimantEmail', email);
     return this.http.get<Claim[]>(`${environment.apiUrl}/claims`, { params });
@@ -52,6 +71,10 @@ export class ClaimApiService {
 
   getClaim(reference: string): Observable<Claim> {
     return this.http.get<Claim>(`${environment.apiUrl}/claims/${encodeURIComponent(reference)}`);
+  }
+
+  getStaffClaim(reference: string): Observable<Claim> {
+    return this.http.get<Claim>(`${environment.apiUrl}/staff/claims/${encodeURIComponent(reference)}`);
   }
 
   getHistory(reference: string): Observable<ClaimHistory[]> {
@@ -67,6 +90,10 @@ export class ClaimApiService {
     return this.http.get<Claim[]>(`${environment.apiUrl}/staff/claims`, { params });
   }
 
+  getActiveOfficers(): Observable<StaffOfficer[]> {
+    return this.http.get<StaffOfficer[]>(`${environment.apiUrl}/staff/officers`);
+  }
+
   assignClaim(reference: string, assignedTo: string): Observable<Claim> {
     return this.http.patch<Claim>(`${environment.apiUrl}/staff/claims/${encodeURIComponent(reference)}/assign`, { assignedTo });
   }
@@ -79,18 +106,42 @@ export class ClaimApiService {
     });
   }
 
-  createInformationRequest(reference: string, requestMessage: string, requestedBy: string, dueDate: string): Observable<InformationRequest> {
-    return this.http.post<InformationRequest>(`${environment.apiUrl}/staff/claims/${encodeURIComponent(reference)}/information-requests`, {
-      requestMessage,
-      requestedBy,
-      dueDate,
-    });
+  submitForDecision(
+    reference: string,
+    submittedBy: string,
+    recommendationOutcome: 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED',
+    recommendationReason: string,
+    recommendationAmount?: number,
+  ): Observable<Claim> {
+    return this.http.post<Claim>(
+      `${environment.apiUrl}/staff/claims/${encodeURIComponent(reference)}/submit-for-decision`,
+      { submittedBy, recommendationOutcome, recommendationReason, recommendationAmount },
+    );
   }
 
-  respondToInformationRequest(reference: string, requestId: string, responseMessage: string): Observable<InformationRequest> {
+  rejectRecommendation(reference: string, rejectedBy: string, reason: string): Observable<Claim> {
+    return this.http.post<Claim>(
+      `${environment.apiUrl}/staff/claims/${encodeURIComponent(reference)}/reject-recommendation`,
+      { rejectedBy, reason },
+    );
+  }
+
+  createInformationRequest(reference: string, requestMessage: string, requestedBy: string,
+                           dueDate: string, files: File[] = []): Observable<InformationRequest> {
+    const body = new FormData();
+    body.append('request', JSON.stringify({ requestMessage, requestedBy, dueDate }));
+    files.forEach(file => body.append('files', file, file.name));
+    return this.http.post<InformationRequest>(`${environment.apiUrl}/staff/claims/${encodeURIComponent(reference)}/information-requests`, body);
+  }
+
+  respondToInformationRequest(reference: string, requestId: string, responseMessage: string,
+                              files: File[] = []): Observable<InformationRequest> {
+    const body = new FormData();
+    body.append('request', JSON.stringify({ responseMessage }));
+    files.forEach(file => body.append('files', file, file.name));
     return this.http.post<InformationRequest>(
       `${environment.apiUrl}/claims/${encodeURIComponent(reference)}/information-requests/${encodeURIComponent(requestId)}/response`,
-      { responseMessage },
+      body,
     );
   }
 

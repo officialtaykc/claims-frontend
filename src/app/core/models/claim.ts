@@ -9,8 +9,7 @@ export type ClaimStatus =
   | 'PARTIALLY_APPROVED'
   | 'REJECTED'
   | 'SETTLEMENT_PENDING'
-  | 'SETTLED'
-  | 'CLOSED';
+  | 'SETTLED';
 
 export interface ClaimFormOptions {
   claimTypes: string[];
@@ -77,6 +76,12 @@ export interface LoginResponse {
   role: DemoRole;
 }
 
+export interface StaffOfficer {
+  username: string;
+  name: string;
+  email: string;
+}
+
 export interface ClaimantPolicy {
   id: string;
   policyNumber: string;
@@ -113,6 +118,11 @@ export interface Claim {
   status: ClaimStatus;
   priority: 'NORMAL' | 'HIGH' | 'URGENT';
   assignedTo?: string | null;
+  recommendationOutcome?: 'APPROVED' | 'PARTIALLY_APPROVED' | 'REJECTED' | null;
+  recommendationAmount?: number | null;
+  recommendationReason?: string | null;
+  recommendationBy?: string | null;
+  recommendationDate?: string | null;
   decisionAmount?: number | null;
   decisionReason?: string | null;
   decisionDate?: string | null;
@@ -172,6 +182,7 @@ export interface ClaimDocument {
   contentType: string;
   uploadedBy: string;
   uploadedAt: string;
+  informationRequestId?: string | null;
 }
 
 export interface DashboardSummary {
@@ -199,7 +210,7 @@ export interface OfficerWorkload {
   pendingDecision: number;
   approved: number;
   rejected: number;
-  settledOrClosed: number;
+  settled: number;
 }
 
 export interface WorkloadResponse {

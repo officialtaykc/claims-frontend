@@ -15,8 +15,8 @@ import { errorMessage } from '../../core/utils/error-message';
     <section class="panel">
       <div class="panel-heading"><div><h2>Workload by claims officer</h2><p>{{ officers.length }} officers with assigned claims</p></div><a class="text-link" routerLink="/staff/queue">View queue →</a></div>
       @if (officers.length) {
-        <div class="table-wrap"><table><thead><tr><th>CLAIMS OFFICER</th><th>TOTAL ASSIGNED</th><th>NEW</th><th>IN REVIEW</th><th>INFO REQUIRED</th><th>PENDING DECISION</th><th>APPROVED</th><th>REJECTED</th><th>SETTLED / CLOSED</th></tr></thead><tbody>
-          @for (officer of officers; track officer.officerName) { <tr><td><span class="officer-cell"><span class="avatar small">{{ officer.officerName.slice(0, 1) }}</span><b>{{ officer.officerName }}</b></span></td><td><b>{{ officer.totalClaims }}</b></td><td>{{ officer.newClaims }}</td><td>{{ officer.inReview }}</td><td>{{ officer.additionalInfoRequired }}</td><td>{{ officer.pendingDecision }}</td><td>{{ officer.approved }}</td><td>{{ officer.rejected }}</td><td>{{ officer.settledOrClosed }}</td></tr> }
+        <div class="table-wrap"><table><thead><tr><th>CLAIMS OFFICER</th><th>TOTAL ASSIGNED</th><th>NEW</th><th>IN REVIEW</th><th>INFO REQUIRED</th><th>PENDING DECISION</th><th>APPROVED</th><th>REJECTED</th><th>SETTLED</th></tr></thead><tbody>
+          @for (officer of officers; track officer.officerName) { <tr><td><span class="officer-cell"><span class="avatar small">{{ officer.officerName.slice(0, 1) }}</span><b>{{ officer.officerName }}</b></span></td><td><b>{{ officer.totalClaims }}</b></td><td>{{ officer.newClaims }}</td><td>{{ officer.inReview }}</td><td>{{ officer.additionalInfoRequired }}</td><td>{{ officer.pendingDecision }}</td><td>{{ officer.approved }}</td><td>{{ officer.rejected }}</td><td>{{ officer.settled }}</td></tr> }
         </tbody></table></div>
       } @else if (!loading) { <div class="empty-state"><span class="empty-icon">◫</span><h3>No workload data yet</h3><p>Assigned claims will appear here after claims are allocated to officers.</p><a class="button button-primary" routerLink="/staff/queue">Open claims queue</a></div> }
     </section>
