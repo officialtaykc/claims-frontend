@@ -39,8 +39,12 @@ import { SessionService } from '../../core/services/session.service';
         <div class="demo-credentials">
           <b>Local demo credentials</b>
           @if (role === 'officer') {
-            <span>Officer A: <code>officer.a</code> / <code>OfficerDemo!26</code></span>
-            <span>Officer B: <code>officer.b</code> / <code>OfficerDemo!26</code></span>
+            <span>Officer A</span>
+            <code>officer.a</code>
+            <code>OfficerDemo!26</code>
+            <span>Officer B</span>
+            <code>officer.b</code>
+            <code>OfficerDemo!26</code>
           } @else {
             <span>{{ demoIdentifier }}</span>
             <span>{{ demoPassword }}</span>

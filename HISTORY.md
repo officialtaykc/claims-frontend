@@ -171,3 +171,10 @@ The user asked whether the sibling `claims-backend` repository is accessible and
 - Persisted the officer recommendation in the backend using Flyway V9. Added the manager recommendation-return endpoint and included recommendation data only in the staff claim-detail response; claimant claim-list/detail responses do not expose this internal recommendation.
 - Added a text and multi-file response form directly to the claimant Information Requests page, with existing attachment size/count limits, API error display and automatic listing refresh after submit. The claim details page keeps its response form as well.
 - Validation: Angular production build passed; all 21 frontend tests passed; the backend orchestration module clean compile and tests passed (2 tests).
+
+## 2026-11-05 — Restrict officer actions to assigned claims
+
+- The user requested disabling claim reassignment and status updates when the claim is not assigned to the signed-in officer.
+- Disabled reassignment of claims owned by another officer and blocked direct dialog/action calls for that case. Unassigned claims remain assignable so an officer can pick up a claim.
+- Only the assigned officer can update claim status. Other officers see an explanation; the UI also prevents status actions for unassigned claims until they are picked up. Manager behavior is unchanged.
+- Validation: Angular production build passed; all 22 frontend tests passed.

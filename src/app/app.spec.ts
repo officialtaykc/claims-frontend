@@ -106,6 +106,9 @@ describe('Claims frontend', () => {
     expect(content).toContain('officer.a');
     expect(content).toContain('officer.b');
     expect(content).toContain('OfficerDemo!26');
+    const credentials = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.demo-credentials code')]
+      .map(code => code.textContent?.trim());
+    expect(credentials).toEqual(['officer.a', 'OfficerDemo!26', 'officer.b', 'OfficerDemo!26']);
     fixture.destroy();
   });
 
@@ -462,6 +465,56 @@ describe('Claims frontend', () => {
     expect(content).not.toContain('Save assignment');
     expect(content).not.toContain('Update status');
     expect(content).not.toContain('Request information');
+    fixture.destroy();
+    http.verify();
+  });
+
+  it('disables reassignment and status updates when an officer does not own the claim', () => {
+    TestBed.overrideProvider(ActivatedRoute, {
+      useValue: {
+        paramMap: of(convertToParamMap({})),
+        snapshot: { data: {} },
+      },
+    });
+    TestBed.inject(SessionService).login({
+      name: 'Alex Lim', email: 'officer.a@chubb.com', role: 'officer',
+    });
+    const fixture = TestBed.createComponent(ClaimDetailsPage);
+    fixture.componentInstance.claim = {
+      id: 'claim-id',
+      claimReference: 'CLM-20261105-001',
+      claimantName: 'John Tan',
+      claimantEmail: 'john.tan@example.com',
+      market: 'Malaysia',
+      claimType: 'MOTOR',
+      policyNumber: 'POL-123',
+      incidentDate: '2026-11-05',
+      incidentDescription: 'Accident details',
+      estimatedLoss: 5333,
+      currency: 'MYR',
+      status: 'IN_REVIEW',
+      priority: 'HIGH',
+      assignedTo: 'officer.b@chubb.com',
+      createdAt: '2026-11-05T13:50:07.271507',
+      updatedAt: '2026-11-05T13:50:07.271507',
+      informationRequests: [],
+      documents: [],
+    };
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const reassignmentButton = [...element.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button => button.textContent?.includes('Reassign claim'));
+    expect(reassignmentButton?.disabled).toBe(true);
+    expect(element.textContent).toContain('Only the assigned officer can reassign this claim.');
+    expect(element.textContent).toContain('Only the assigned officer can update this claim’s status.');
+    expect([...element.querySelectorAll('button')].some(button =>
+      button.textContent?.includes('Update status'))).toBe(false);
+
+    fixture.componentInstance.statusForm.controls.newStatus.setValue('ADDITIONAL_INFO_REQUIRED');
+    fixture.componentInstance.updateStatus();
+    expect(http.match(request => request.url.includes('/status'))).toHaveLength(0);
     fixture.destroy();
     http.verify();
   });

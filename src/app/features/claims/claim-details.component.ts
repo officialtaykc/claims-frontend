@@ -109,13 +109,16 @@ import { errorMessage } from '../../core/utils/error-message';
                 <section class="panel" data-testid="claim-assignment">
                   <div class="panel-heading"><div><h2>Claim assignment</h2><p>Assign an officer to this claim</p></div></div>
                   <div class="assigned-current"><small>CURRENT ASSIGNEE</small><b>{{ currentAssigneeName }}</b></div>
-                  <button class="button button-secondary full-button" type="button" [disabled]="saving" (click)="openReassignDialog()">{{ record.assignedTo ? 'Reassign claim' : 'Assign claim' }}</button>
+                  <button class="button button-secondary full-button" type="button" [disabled]="saving || !canOfficerReassign" (click)="openReassignDialog()">{{ record.assignedTo ? 'Reassign claim' : 'Assign claim' }}</button>
+                  @if (isOfficer && record.assignedTo && !isAssignedToCurrentOfficer) { <p class="empty-note">Only the assigned officer can reassign this claim.</p> }
                 </section>
               }
             <section class="panel">
               <div class="panel-heading"><div><h2>Update status</h2><p>Only valid workflow transitions are offered</p></div></div>
-              @if (nextStatuses.length) {
-                <form [formGroup]="statusForm" (ngSubmit)="updateStatus()"><label>New status<select formControlName="newStatus">@for (status of nextStatuses; track status) { <option [value]="status">{{ titleCase(status) }}</option> }</select></label><label>Comment (optional)<textarea rows="3" formControlName="comment" placeholder="Add a note to the activity history"></textarea></label><button class="button button-primary full-button" [disabled]="saving">{{ saving ? 'Updating…' : 'Update status' }}</button></form>
+              @if (isOfficer && !isAssignedToCurrentOfficer) {
+                <p class="empty-note">{{ record.assignedTo ? 'Only the assigned officer can update this claim’s status.' : 'Assign this claim to yourself before updating its status.' }}</p>
+              } @else if (nextStatuses.length) {
+                <form [formGroup]="statusForm" (ngSubmit)="updateStatus()"><label>New status<select formControlName="newStatus">@for (status of nextStatuses; track status) { <option [value]="status">{{ titleCase(status) }}</option> }</select></label><label>Comment (optional)<textarea rows="3" formControlName="comment" placeholder="Add a note to the activity history"></textarea></label><button class="button button-primary full-button" [disabled]="saving || !canUpdateClaimStatus">{{ saving ? 'Updating…' : 'Update status' }}</button></form>
               } @else { <p class="empty-note">No further status transitions are available.</p> }
             </section>
             }
@@ -213,7 +216,19 @@ export class ClaimDetailsPage implements OnInit {
     )?.newStatus ?? null;
   }
   get nextStatuses(): ClaimStatus[] {
-    return this.claim && this.isOfficer ? this.transitions[this.claim.status] ?? [] : [];
+    return this.claim && this.canUpdateClaimStatus ? this.transitions[this.claim.status] ?? [] : [];
+  }
+  get isAssignedToCurrentOfficer(): boolean {
+    const assignedTo = this.claim?.assignedTo?.trim().toLowerCase();
+    const email = this.session.user()?.email.trim().toLowerCase();
+    if (!assignedTo || !email) return false;
+    return assignedTo === email || assignedTo === email.split('@')[0];
+  }
+  get canOfficerReassign(): boolean {
+    return !this.isOfficer || !this.claim?.assignedTo || this.isAssignedToCurrentOfficer;
+  }
+  get canUpdateClaimStatus(): boolean {
+    return this.isOfficer && this.isAssignedToCurrentOfficer;
   }
   get canReassignClaim(): boolean {
     return !!this.claim && ![
@@ -249,7 +264,7 @@ export class ClaimDetailsPage implements OnInit {
   }
 
   openReassignDialog(): void {
-    if (!this.canReassignClaim) return;
+    if (!this.canReassignClaim || !this.canOfficerReassign) return;
     this.reassignDialogOpen = true;
     this.selectedOfficer = '';
     this.loadOfficers();
@@ -321,7 +336,7 @@ export class ClaimDetailsPage implements OnInit {
   }
 
   assign(): void {
-    if (!this.claim || !this.selectedOfficer) return;
+    if (!this.claim || !this.selectedOfficer || !this.canOfficerReassign) return;
     this.saving = true;
     this.success = '';
     this.api.assignClaim(this.reference, this.selectedOfficer).subscribe({
@@ -334,7 +349,7 @@ export class ClaimDetailsPage implements OnInit {
   }
 
   updateStatus(): void {
-    if (!this.claim || this.statusForm.invalid) return;
+    if (!this.claim || !this.canUpdateClaimStatus || this.statusForm.invalid) return;
     const newStatus = this.statusForm.controls.newStatus.value;
     if (!window.confirm(`Change ${this.reference} to ${this.titleCase(newStatus)}?`)) return;
     this.saving = true;
