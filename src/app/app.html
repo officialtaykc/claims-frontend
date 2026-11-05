@@ -1,0 +1,39 @@
+@if (user; as currentUser) {
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" [routerLink]="dashboardPath(currentUser.role)">
+        <span class="brand-mark">C</span>
+        <span><strong>Chubb</strong><small>Claims platform</small></span>
+      </a>
+      <div class="nav-caption">WORKSPACE</div>
+      <nav class="side-nav">
+        @for (item of navigation; track item.path) {
+          <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-icon">{{ item.icon }}</span>{{ item.label }}
+          </a>
+        }
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="support-note"><span class="support-dot"></span><span><b>Demo environment</b><small>Connected to claims API</small></span></div>
+        <button class="logout-button" type="button" (click)="logout()">↪ <span>Sign out</span></button>
+      </div>
+    </aside>
+    <div class="main-column">
+      <header class="topbar">
+        <div class="crumb"><span>APAC</span><span class="crumb-divider">/</span><b>{{ roleLabel }} workspace</b></div>
+        <div class="topbar-user">
+          <button class="icon-button" aria-label="Notifications">♧<span class="notification-dot"></span></button>
+          <span class="avatar">{{ currentUser.name.slice(0, 1) }}</span>
+          <span class="user-meta"><b>{{ currentUser.name }}</b><small>{{ roleLabel }}</small></span>
+          <button class="logout-mobile" type="button" aria-label="Sign out" (click)="logout()">↪</button>
+        </div>
+      </header>
+      <main class="content">
+        <router-outlet />
+      </main>
+      <footer class="footer">Chubb APAC Claims Management <span>•</span> Demonstration environment</footer>
+    </div>
+  </div>
+} @else {
+  <router-outlet />
+}
