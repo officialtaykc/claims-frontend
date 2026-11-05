@@ -74,3 +74,23 @@ The user asked whether the sibling `claims-backend` repository is accessible and
 - Converted claim option/loading/error state to Angular signals; also made claim submission receipt/loading/error state reactive.
 - Added a component test verifying the loading message is replaced by Motor and Property choices after the options response.
 - Validation: `npm.cmd run build` passed; `npm.cmd test -- --watch=false` passed (4 tests); `git diff --check` passed.
+
+## 2026-11-05 14:07 — Claim form validation and combined amount/currency
+
+- The user requested visible required-field indicators and specific validation feedback, replacing the generic all-fields message; also requested estimated loss and currency as one field.
+- Added required markers and field-specific messages/highlighting for required Motor and Property fields, with valid-email and nonnegative amount feedback. Submit now points to highlighted fields and identifies a missing declaration separately.
+- Combined amount and currency into a single grouped form control while preserving separate API DTO values.
+- Ensured dynamically-added Motor/Property validators are recalculated before submit.
+- Validation: `npm.cmd run build` passed; `npm.cmd test -- --watch=false` passed (4 tests); `git diff --check` passed.
+
+## 2026-11-05T14:12:41.757+08:00 — Separate claim form options APIs
+
+> could you then expose them as 2 separate APIs? then help me adjust in my claims-frontend repo as well to cater these new changes
+
+## 2026-11-05 — Account login and registration placeholder
+
+- The user requested role selection as one-click tabs, username/password sign-in backed by the existing claimant/staff account tables, demo accounts seeded through Flyway, and a dummy registration screen.
+- Added `POST /api/auth/login` through the existing API proxy, backed by an orchestration login endpoint that checks active claimant/staff accounts and verifies PBKDF2-SHA256 salted hashes. Invalid credentials receive a generic 401 response. Successful login updates the account's last-login timestamp and returns only name, email and role.
+- Added Flyway migration `V4__seed_demo_accounts.sql` with one claimant, officer and manager account. Password hashes are seeded, not plaintext. Local demo credentials are listed in the README and login UI.
+- Replaced the role dropdown with role tabs and username/email/password fields, explicit loading/error states, and a link to `/register`. The registration route is clearly marked unavailable and does not submit or create an account.
+- The frontend stores the returned identity in local storage for role-specific UI routing. This remains a localhost demonstration login, not production authentication: no token/session is issued and other backend endpoints are not protected by this login.

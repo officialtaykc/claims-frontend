@@ -6,11 +6,15 @@ import {
   ClaimFilters,
   ClaimFormOptions,
   ClaimHistory,
+  MotorClaimFormOptions,
+  PropertyClaimFormOptions,
   ClaimStatus,
   ClaimSubmissionRequest,
   ClaimSubmissionResponse,
   DashboardSummary,
   InformationRequest,
+  LoginRequest,
+  LoginResponse,
   WorkloadResponse,
 } from '../models/claim';
 import { environment } from '../../../environments/environment';
@@ -19,8 +23,16 @@ import { environment } from '../../../environments/environment';
 export class ClaimApiService {
   private readonly http = inject(HttpClient);
 
-  getClaimFormOptions(): Observable<ClaimFormOptions> {
-    return this.http.get<ClaimFormOptions>(`${environment.apiUrl}/config/claim-form-options`);
+  login(request: LoginRequest): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, request);
+  }
+
+  getMotorClaimOptions(): Observable<MotorClaimFormOptions> {
+    return this.http.get<MotorClaimFormOptions>(`${environment.apiUrl}/config/motor-claims`);
+  }
+
+  getPropertyClaimOptions(): Observable<PropertyClaimFormOptions> {
+    return this.http.get<PropertyClaimFormOptions>(`${environment.apiUrl}/config/property-claims`);
   }
 
   submitClaim(request: ClaimSubmissionRequest): Observable<ClaimSubmissionResponse> {

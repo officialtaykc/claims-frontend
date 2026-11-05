@@ -1,34 +1,39 @@
 import { Injectable, signal } from '@angular/core';
 import { DemoRole, DemoUser } from '../models/claim';
 
-const DEMO_USERS: Record<DemoRole, DemoUser> = {
-  claimant: { name: 'John Tan', email: 'john.tan@example.com', role: 'claimant' },
-  officer: { name: 'Alex Lim', email: 'officer.a@chubb.com', role: 'officer' },
-  manager: { name: 'Michelle Wong', email: 'manager@chubb.com', role: 'manager' },
-};
+const ROLES: DemoRole[] = ['claimant', 'officer', 'manager'];
+const SESSION_KEY = 'claims-account-user';
+const LEGACY_SESSION_KEY = 'claims-demo-user';
 
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   readonly user = signal<DemoUser | null>(this.readUser());
 
-  login(role: DemoRole): DemoUser {
-    const user = DEMO_USERS[role];
-    localStorage.setItem('claims-demo-user', JSON.stringify(user));
+  login(user: DemoUser): DemoUser {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
     this.user.set(user);
     return user;
   }
 
   logout(): void {
-    localStorage.removeItem('claims-demo-user');
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(LEGACY_SESSION_KEY);
     this.user.set(null);
   }
 
   private readUser(): DemoUser | null {
     try {
-      const saved = localStorage.getItem('claims-demo-user');
+      localStorage.removeItem(LEGACY_SESSION_KEY);
+      const saved = localStorage.getItem(SESSION_KEY);
       if (!saved) return null;
-      const user = JSON.parse(saved) as DemoUser;
-      return user && user.role in DEMO_USERS ? DEMO_USERS[user.role] : null;
+      const user: unknown = JSON.parse(saved);
+      if (!user || typeof user !== 'object') return null;
+      const candidate = user as Partial<DemoUser>;
+      return typeof candidate.name === 'string' &&
+        typeof candidate.email === 'string' &&
+        ROLES.includes(candidate.role as DemoRole)
+        ? candidate as DemoUser
+        : null;
     } catch {
       return null;
     }

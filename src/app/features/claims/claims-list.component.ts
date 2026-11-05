@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Claim, ClaimStatus, ClaimType, InformationRequest } from '../../core/models/claim';
@@ -13,8 +13,8 @@ import { errorMessage } from '../../core/utils/error-message';
   template: `
     @if (view === 'requests') {
       <div class="page-heading"><div><div class="eyebrow">CLAIMANT PORTAL</div><h1>Information requests</h1><p>Review and respond to requests from your claims team.</p></div><button class="button button-secondary" type="button" (click)="load()">↻ Refresh</button></div>
-      @if (error) { <div class="alert error">{{ error }}</div> }
-      @if (loading) { <div class="loading-panel">Loading information requests…</div> }
+      @if (error()) { <div class="alert error">{{ error() }}</div> }
+      @if (loading()) { <div class="loading-panel">Loading information requests…</div> }
       @if (requests.length) {
         <div class="request-grid">
           @for (item of requests; track item.request.id) {
@@ -26,24 +26,24 @@ import { errorMessage } from '../../core/utils/error-message';
             </article>
           }
         </div>
-      } @else if (!loading) { <div class="panel empty-state"><span class="empty-icon">✉</span><h3>No information requests</h3><p>When your claims team needs more information, requests will appear here.</p></div> }
+      } @else if (!loading()) { <div class="panel empty-state"><span class="empty-icon">✉</span><h3>No information requests</h3><p>When your claims team needs more information, requests will appear here.</p></div> }
     } @else if (view === 'messages') {
       <div class="page-heading"><div><div class="eyebrow">CLAIMANT PORTAL</div><h1>Messages & updates</h1><p>Recent claim activity based on the status currently returned by the claims service.</p></div><button class="button button-secondary" type="button" (click)="load()">↻ Refresh</button></div>
-      @if (error) { <div class="alert error">{{ error }}</div> }
-      @if (loading) { <div class="loading-panel">Loading claim updates…</div> }
-      @if (claims.length) {
+      @if (error()) { <div class="alert error">{{ error() }}</div> }
+      @if (loading()) { <div class="loading-panel">Loading claim updates…</div> }
+      @if (claims().length) {
         <section class="panel activity-list">
-          @for (claim of claims; track claim.id) {
+          @for (claim of claims(); track claim.id) {
             <article class="activity-item"><span class="activity-marker" [class]="statusClass(claim.status)"></span><div><div class="activity-title">{{ activityTitle(claim.status) }}</div><p>{{ claim.claimReference }} · {{ titleCase(claim.claimType) }} claim in {{ claim.market }}</p><small>Last updated {{ claim.updatedAt | date:'dd MMM yyyy, h:mm a' }}</small></div><a class="row-link" [routerLink]="['/claimant/claims', claim.claimReference]">View claim →</a></article>
           }
         </section>
-      } @else if (!loading) { <div class="panel empty-state"><span class="empty-icon">◉</span><h3>No updates yet</h3><p>Updates to your claims will show here.</p></div> }
+      } @else if (!loading()) { <div class="panel empty-state"><span class="empty-icon">◉</span><h3>No updates yet</h3><p>Updates to your claims will show here.</p></div> }
     } @else {
       <div class="page-heading"><div><div class="eyebrow">{{ isClaimant ? 'CLAIMANT PORTAL' : 'CLAIMS OPERATIONS' }}</div><h1>{{ isClaimant ? 'My claims' : 'Claims work queue' }}</h1><p>{{ isClaimant ? 'View and track claims you have submitted.' : 'Review, assign and progress claims across your operation.' }}</p></div>
         @if (isClaimant) { <a class="button button-primary" routerLink="/claimant/claims/new">＋ Submit new claim</a> }
         @else { <button class="button button-secondary" type="button" (click)="load()">↻ Refresh</button> }
       </div>
-      @if (error) { <div class="alert error">{{ error }}</div> }
+      @if (error()) { <div class="alert error">{{ error() }}</div> }
       <section class="panel">
         <div class="filter-row">
           <label class="search-input"><span>⌕</span><input type="search" [(ngModel)]="search" placeholder="Search reference or claimant"></label>
@@ -55,14 +55,14 @@ import { errorMessage } from '../../core/utils/error-message';
             <select aria-label="Sort claims by date" [(ngModel)]="dateSort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
           }
         </div>
-        @if (loading) { <div class="loading-panel">Loading claims…</div> }
+        @if (loading()) { <div class="loading-panel">Loading claims…</div> }
         @if (filteredClaims.length) {
           <div class="table-wrap"><table><thead><tr>@if (!isClaimant) { <th>PRIORITY</th> }<th>CLAIM REFERENCE</th><th>{{ isClaimant ? 'CLAIM TYPE' : 'CLAIMANT' }}</th><th>MARKET</th><th>INCIDENT DATE</th><th>{{ isClaimant ? 'SUBMITTED' : 'ESTIMATED LOSS' }}</th><th>STATUS</th><th></th></tr></thead><tbody>
             @for (claim of filteredClaims; track claim.id) {
               <tr>@if (!isClaimant) { <td><span class="priority" [class]="claim.priority.toLowerCase()">{{ titleCase(claim.priority) }}</span></td>}<td><a class="ref-link" [routerLink]="[isClaimant ? '/claimant/claims' : '/staff/claims', claim.claimReference]">{{ claim.claimReference }}</a></td><td>{{ isClaimant ? titleCase(claim.claimType) : claim.claimantName }}</td><td>{{ claim.market }}</td><td>{{ claim.incidentDate | date:'dd MMM yyyy' }}</td><td>{{ isClaimant ? (claim.createdAt | date:'dd MMM yyyy') : (claim.estimatedLoss | currency:claim.currency:'symbol':'1.0-0') }}</td><td><span class="status-badge" [class]="statusClass(claim.status)">{{ titleCase(claim.status) }}</span></td><td><a class="row-link" [routerLink]="[isClaimant ? '/claimant/claims' : '/staff/claims', claim.claimReference]">{{ isClaimant ? 'View' : 'Open' }} →</a></td></tr>
             }
           </tbody></table></div>
-        } @else if (!loading) { <div class="empty-state"><span class="empty-icon">▤</span><h3>{{ claims.length ? 'No matching claims' : 'No claims available' }}</h3><p>{{ claims.length ? 'Try adjusting your filters.' : 'Claims will appear here once they are registered by the backend.' }}</p>@if (isClaimant) { <a class="button button-primary" routerLink="/claimant/claims/new">Submit a claim</a> }</div> }
+        } @else if (!loading()) { <div class="empty-state"><span class="empty-icon">▤</span><h3>{{ claims().length ? 'No matching claims' : 'No claims available' }}</h3><p>{{ claims().length ? 'Try adjusting your filters.' : 'Claims will appear here once they are registered by the backend.' }}</p>@if (isClaimant) { <a class="button button-primary" routerLink="/claimant/claims/new">Submit a claim</a> }</div> }
       </section>
     }
   `,
@@ -72,9 +72,9 @@ export class ClaimsListPage implements OnInit {
   private readonly session = inject(SessionService);
   private readonly route = inject(ActivatedRoute);
   view = '';
-  claims: Claim[] = [];
-  loading = false;
-  error = '';
+  readonly claims = signal<Claim[]>([]);
+  readonly loading = signal(false);
+  readonly error = signal('');
   search = '';
   typeFilter = '';
   statusFilter = '';
@@ -85,15 +85,15 @@ export class ClaimsListPage implements OnInit {
 
   get isClaimant(): boolean { return this.session.user()?.role === 'claimant'; }
   get userEmail(): string { return this.session.user()?.email ?? ''; }
-  get markets(): string[] { return [...new Set(this.claims.map(claim => claim.market))].sort(); }
-  get officers(): string[] { return [...new Set(this.claims.map(claim => claim.assignedTo).filter((value): value is string => !!value))].sort(); }
+  get markets(): string[] { return [...new Set(this.claims().map(claim => claim.market))].sort(); }
+  get officers(): string[] { return [...new Set(this.claims().map(claim => claim.assignedTo).filter((value): value is string => !!value))].sort(); }
   get requests(): { claim: Claim; request: InformationRequest }[] {
-    return this.claims.flatMap(claim => claim.informationRequests.map(request => ({ claim, request })))
+    return this.claims().flatMap(claim => claim.informationRequests.map(request => ({ claim, request })))
       .sort((a, b) => b.request.requestedAt.localeCompare(a.request.requestedAt));
   }
   get filteredClaims(): Claim[] {
     const term = this.search.trim().toLowerCase();
-    return this.claims.filter(claim =>
+    return this.claims().filter(claim =>
       (!term || claim.claimReference.toLowerCase().includes(term) || claim.claimantName.toLowerCase().includes(term)) &&
       (!this.typeFilter || claim.claimType === this.typeFilter) &&
       (!this.statusFilter || claim.status === this.statusFilter) &&
@@ -112,14 +112,14 @@ export class ClaimsListPage implements OnInit {
   }
 
   load(): void {
-    this.loading = true;
-    this.error = '';
+    this.loading.set(true);
+    this.error.set('');
     const request = this.isClaimant
       ? this.api.getMyClaims(this.session.user()?.email ?? '')
       : this.api.getStaffClaims();
     request.subscribe({
-      next: claims => { this.claims = claims; this.loading = false; },
-      error: error => { this.error = errorMessage(error); this.loading = false; },
+      next: claims => { this.claims.set(claims); this.loading.set(false); },
+      error: error => { this.error.set(errorMessage(error)); this.loading.set(false); },
     });
   }
 

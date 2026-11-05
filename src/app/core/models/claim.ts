@@ -16,10 +16,26 @@ export interface ClaimFormOptions {
   claimTypes: string[];
   markets: string[];
   currencies: string[];
-  motorClaimCategories: string[];
+  claimCategories: string[];
   propertyTypes: string[];
-  propertyCausesOfLoss: string[];
-  propertyAffectedAreas: string[];
+  causesOfLoss: string[];
+  affectedAreas: string[];
+}
+
+export interface MotorClaimFormOptions {
+  claimTypes: string[];
+  markets: string[];
+  currencies: string[];
+  claimCategories: string[];
+}
+
+export interface PropertyClaimFormOptions {
+  claimTypes: string[];
+  markets: string[];
+  currencies: string[];
+  propertyTypes: string[];
+  causesOfLoss: string[];
+  affectedAreas: string[];
 }
 
 export interface MotorClaimDetailsRequest {
@@ -44,6 +60,18 @@ export interface PropertyClaimDetailsRequest {
 }
 
 export interface DemoUser {
+  name: string;
+  email: string;
+  role: DemoRole;
+}
+
+export interface LoginRequest {
+  role: 'CLAIMANT' | 'OFFICER' | 'MANAGER';
+  identifier: string;
+  password: string;
+}
+
+export interface LoginResponse {
   name: string;
   email: string;
   role: DemoRole;

@@ -5,10 +5,12 @@ import { ClaimFormPage, ClaimTypeSelectionPage } from './features/claims/claim-f
 import { ClaimsListPage } from './features/claims/claims-list.component';
 import { DashboardPage } from './features/dashboard/dashboard.component';
 import { LoginPage } from './features/login/login.component';
+import { RegisterPage } from './features/login/register.component';
 import { WorkloadPage } from './features/management/workload.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginPage },
+  { path: 'register', component: RegisterPage },
   { path: 'claimant/dashboard', component: DashboardPage, canActivate: [authGuard], data: { roles: ['claimant'] } },
   { path: 'claimant/claims/new', component: ClaimTypeSelectionPage, canActivate: [authGuard], data: { roles: ['claimant'] } },
   { path: 'claimant/claims/new/motor', component: ClaimFormPage, canActivate: [authGuard], data: { roles: ['claimant'], claimType: 'MOTOR' } },
