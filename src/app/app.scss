@@ -1,0 +1,53 @@
+:host { display: block; min-height: 100vh; }
+
+.app-shell { display: flex; min-height: 100vh; }
+.sidebar { background: #10243a; color: #d7e1eb; display: flex; flex: 0 0 246px; flex-direction: column; min-height: 100vh; padding: 27px 16px 18px; }
+.brand { align-items: center; color: #fff; display: flex; gap: 12px; margin: 0 8px 48px; text-decoration: none; }
+.brand-mark { align-items: center; background: #fff; border-radius: 9px; color: #155c9b; display: flex; font-size: 22px; font-weight: 800; height: 39px; justify-content: center; width: 39px; }
+.brand strong { display: block; font-size: 17px; letter-spacing: .02em; }
+.brand small { color: #9eb1c5; display: block; font-size: 11px; margin-top: 2px; }
+.nav-caption { color: #71859a; font-size: 10px; font-weight: 700; letter-spacing: .14em; padding: 0 12px 12px; }
+.side-nav { display: grid; gap: 5px; }
+.side-nav a { align-items: center; border-radius: 7px; color: #b6c4d2; display: flex; font-size: 13px; gap: 12px; min-height: 43px; padding: 0 12px; text-decoration: none; transition: background .15s, color .15s; }
+.side-nav a:hover, .side-nav a.active { background: #1b3855; color: #fff; }
+.side-nav a.active { box-shadow: inset 3px 0 #46a2de; }
+.nav-icon { align-items: center; color: #8db9dc; display: inline-flex; font-size: 16px; height: 20px; justify-content: center; width: 20px; }
+.sidebar-bottom { margin-top: auto; }
+.support-note { align-items: center; background: #182f47; border: 1px solid #29415a; border-radius: 8px; display: flex; gap: 10px; margin: 0 4px 18px; padding: 12px 10px; }
+.support-dot { background: #42bd8b; border-radius: 50%; height: 7px; width: 7px; }
+.support-note b, .support-note small { display: block; font-size: 10px; }
+.support-note b { color: #e0e9f1; font-weight: 600; }
+.support-note small { color: #91a6ba; margin-top: 4px; }
+.logout-button { background: none; border: 0; color: #aab9c8; cursor: pointer; font-size: 14px; padding: 10px 12px; text-align: left; width: 100%; }
+.logout-button span { margin-left: 9px; }
+.main-column { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.topbar { align-items: center; background: #fff; border-bottom: 1px solid #e8edf2; display: flex; height: 68px; justify-content: space-between; padding: 0 34px; }
+.crumb { color: #8a98a6; font-size: 12px; }
+.crumb-divider { color: #c4cbd2; margin: 0 9px; }
+.crumb b { color: #415366; font-weight: 600; }
+.topbar-user { align-items: center; display: flex; gap: 11px; }
+.icon-button { background: none; border: 0; color: #516476; cursor: pointer; font-size: 20px; margin-right: 8px; position: relative; }
+.notification-dot { background: #e45858; border: 2px solid #fff; border-radius: 50%; height: 7px; position: absolute; right: 0; top: 0; width: 7px; }
+.avatar { align-items: center; background: #e4f0f9; border-radius: 50%; color: #1d679e; display: inline-flex; font-size: 13px; font-weight: 700; height: 34px; justify-content: center; width: 34px; }
+.user-meta b, .user-meta small { display: block; }
+.user-meta b { color: #253649; font-size: 11px; }
+.user-meta small { color: #8492a1; font-size: 10px; margin-top: 3px; }
+.content { flex: 1; margin: 0 auto; max-width: 1440px; padding: 32px 38px 44px; width: 100%; }
+.footer { color: #a2acb6; font-size: 10px; padding: 0 38px 19px; }
+.footer span { margin: 0 5px; }
+.logout-mobile { display: none; }
+@media (max-width: 800px) {
+  .sidebar { flex-basis: 68px; padding: 20px 8px 12px; }
+  .brand { justify-content: center; margin: 0 0 35px; }
+  .brand > span:last-child, .nav-caption { display: none; }
+  .brand-mark { flex: 0 0 39px; }
+  .side-nav a { font-size: 0; justify-content: center; padding: 0; }
+  .side-nav a .nav-icon { font-size: 17px; }
+  .support-note, .logout-button span { display: none; }
+  .logout-button { text-align: center; }
+  .topbar { padding: 0 16px; }
+  .content { padding: 25px 17px 35px; }
+  .footer { padding: 0 17px 16px; }
+  .user-meta, .icon-button { display: none; }
+  .logout-mobile { background: transparent; border: 0; color: #405366; display: inline-block; font-size: 18px; }
+}
