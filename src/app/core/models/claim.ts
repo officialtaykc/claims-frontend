@@ -77,6 +77,23 @@ export interface LoginResponse {
   role: DemoRole;
 }
 
+export interface ClaimantPolicy {
+  id: string;
+  policyNumber: string;
+  claimType: ClaimType;
+  productName: string;
+  market: string;
+  currency: string;
+  insuredItem: string | null;
+  coverageAmount: number | null;
+  effectiveFrom: string;
+  effectiveTo: string;
+  active: boolean;
+  claimantName: string;
+  claimantEmail: string;
+  claimantPhone: string | null;
+}
+
 export interface Claim {
   id: string;
   claimReference: string;

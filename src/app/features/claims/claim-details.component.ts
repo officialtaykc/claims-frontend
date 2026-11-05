@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -111,6 +111,7 @@ export class ClaimDetailsPage implements OnInit {
   private readonly session = inject(SessionService);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   readonly user = this.session.user;
   readonly assignmentForm = this.fb.nonNullable.group({ assignedTo: ['', Validators.required] });
   readonly statusForm = this.fb.nonNullable.group({ newStatus: ['IN_REVIEW' as ClaimStatus, Validators.required], comment: [''] });
@@ -168,11 +169,13 @@ export class ClaimDetailsPage implements OnInit {
         this.assignmentForm.controls.assignedTo.setValue(result.claim.assignedTo ?? '');
         this.statusForm.controls.newStatus.setValue(this.transitions[result.claim.status]?.[0] ?? 'IN_REVIEW');
         this.loading = false;
+        this.changeDetector.markForCheck();
       },
       error: error => {
         this.claim = null;
         this.loading = false;
         this.error = `${errorMessage(error)} If this claim was just submitted, allow time for asynchronous registration and refresh.`;
+        this.changeDetector.markForCheck();
       },
     });
   }
@@ -239,11 +242,13 @@ export class ClaimDetailsPage implements OnInit {
         this.responseText = '';
         this.respondingId = '';
         this.success = 'Your response has been sent to the claims team.';
+        this.changeDetector.markForCheck();
         this.load();
       },
       error: error => {
         this.error = errorMessage(error);
         this.respondingId = '';
+        this.changeDetector.markForCheck();
       },
     });
   }
@@ -254,11 +259,13 @@ export class ClaimDetailsPage implements OnInit {
   private completeAction(message: string): void {
     this.saving = false;
     this.success = message;
+    this.changeDetector.markForCheck();
     this.load();
   }
 
   private failAction(error: unknown): void {
     this.saving = false;
     this.error = errorMessage(error);
+    this.changeDetector.markForCheck();
   }
 }

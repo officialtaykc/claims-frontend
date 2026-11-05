@@ -87,6 +87,14 @@ The user asked whether the sibling `claims-backend` repository is accessible and
 
 > could you then expose them as 2 separate APIs? then help me adjust in my claims-frontend repo as well to cater these new changes
 
+## 2026-11-05T14:38:20.615+08:00 — My Policies and claim form autofill
+
+> i plan to create a concept of "My Policies", display it on the home screen, add the "Active" button. these info should also be pulled from database. do ensure the details are passed dynamically to frontend. also under the Submit Claims screen, allow users to select their policy which should autopopulate the fields under Policy and contact details. ensure the name and email address is also dynamically pulled from backend DB, reduce unecessary filling up of information
+
+## 2026-11-05T14:43:31.653+08:00 — Move form-options cache to API startup
+
+> can u make the on application startup loading of json into cache to be done by ClaimsApiApplication instead.
+
 ## 2026-11-05 — Account login and registration placeholder
 
 - The user requested role selection as one-click tabs, username/password sign-in backed by the existing claimant/staff account tables, demo accounts seeded through Flyway, and a dummy registration screen.
@@ -94,3 +102,16 @@ The user asked whether the sibling `claims-backend` repository is accessible and
 - Added Flyway migration `V4__seed_demo_accounts.sql` with one claimant, officer and manager account. Password hashes are seeded, not plaintext. Local demo credentials are listed in the README and login UI.
 - Replaced the role dropdown with role tabs and username/email/password fields, explicit loading/error states, and a link to `/register`. The registration route is clearly marked unavailable and does not submit or create an account.
 - The frontend stores the returned identity in local storage for role-specific UI routing. This remains a localhost demonstration login, not production authentication: no token/session is issued and other backend endpoints are not protected by this login.
+
+## 2026-11-05 — Refresh UI after API responses across the application
+
+- The user reported the same stale view issue in claim details and asked for API-driven refresh behavior across the system.
+- Audited the frontend's HTTP subscriptions. Claim list state already uses Angular signals; claim details, dashboards and workload views updated plain fields inside asynchronous callbacks under zoneless change detection.
+- Added `ChangeDetectorRef.markForCheck()` to all relevant claim-details action/load responses, dashboard claim/summary responses and workload responses, so loaded records and refreshed post-action details are rendered.
+- Added a claim-details test that flushes the claim and history endpoints and verifies the returned claim appears. The Angular build passed and all 8 tests passed.
+
+## 2026-11-05 — Property affected areas checkbox list
+
+- The user requested checkbox selection for the multi-select “Areas affected” property claim field.
+- Replaced the native multi-select dropdown with an accessible, styled checkbox list populated from the existing dynamic backend options. Selection remains an array in the form and is serialized into the existing backend `affectedAreas` string on submission; required-field validation remains intact.
+- Added a test verifying multiple configured areas can be selected. Angular build passed and all 9 tests passed.

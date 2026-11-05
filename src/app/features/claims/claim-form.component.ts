@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, map, Observable } from 'rxjs';
-import { ClaimFormOptions, ClaimSubmissionResponse, ClaimType } from '../../core/models/claim';
+import { ClaimantPolicy, ClaimFormOptions, ClaimSubmissionResponse, ClaimType } from '../../core/models/claim';
 import { ClaimApiService } from '../../core/services/claim-api.service';
 import { SessionService } from '../../core/services/session.service';
 import { errorMessage } from '../../core/utils/error-message';
@@ -123,14 +123,29 @@ export class ClaimTypeSelectionPage implements OnInit {
           </div>
           <div class="form-section-title section-spaced"><h2>Property damage information</h2></div>
           <div class="form-grid">
-            <label class="span-two required-field">Areas affected <select formControlName="areasAffected" multiple size="4" [class.invalid-field]="showError('areasAffected')">@for (area of config.affectedAreas; track area) { <option [value]="area">{{ area }}</option> }</select><small class="field-hint">Select one or more areas.</small>@if (showError('areasAffected')) { <small class="validation-message">{{ fieldError('areasAffected') }}</small> }</label>
+            <fieldset class="span-two choice-field required-field affected-areas" [class.invalid-choice]="showError('areasAffected')" aria-describedby="areas-affected-hint">
+              <legend>Areas affected</legend>
+              <small id="areas-affected-hint" class="field-hint">Select all areas that apply.</small>
+              <div class="affected-area-options">
+                @for (area of config.affectedAreas; track area) {
+                  <label class="affected-area-option">
+                    <input type="checkbox" [checked]="isAreaAffected(area)" (change)="toggleAffectedArea(area, $event)">
+                    <span>{{ area }}</span>
+                  </label>
+                }
+              </div>
+              @if (showError('areasAffected')) { <small class="validation-message">{{ fieldError('areasAffected') }}</small> }
+            </fieldset>
             <label class="span-two required-field">Description of damage <textarea formControlName="incidentDescription" rows="4" placeholder="Describe the damage and affected items" [class.invalid-field]="showError('incidentDescription')"></textarea>@if (showError('incidentDescription')) { <small class="validation-message">{{ fieldError('incidentDescription') }}</small> }</label>
             <fieldset class="span-two choice-field"><legend>Are there damaged contents or belongings?</legend><label><input type="radio" formControlName="contentsDamaged" value="Yes"> Yes</label><label><input type="radio" formControlName="contentsDamaged" value="No"> No</label></fieldset>
           </div>
         }
         <div class="form-section-title section-spaced"><h2>Policy and contact details</h2><p>How we can identify and contact you</p></div>
         <div class="form-grid">
-          <label class="required-field">Policy number <input formControlName="policyNumber" placeholder="e.g. POL-APAC-1024" [class.invalid-field]="showError('policyNumber')">@if (showError('policyNumber')) { <small class="validation-message">{{ fieldError('policyNumber') }}</small> }</label>
+          <label class="required-field">Select policy <select formControlName="policyNumber" [class.invalid-field]="showError('policyNumber')" (change)="onPolicySelected($event)"><option value="">Select an active {{ claimType.toLowerCase() }} policy</option>@for (policy of activePolicies(); track policy.id) { <option [value]="policy.policyNumber">{{ policy.policyNumber }} · {{ policy.productName }}</option> }</select>@if (showError('policyNumber')) { <small class="validation-message">{{ fieldError('policyNumber') }}</small> }</label>
+          @if (policiesLoading()) { <p class="field-hint">Loading your policies…</p> }
+          @if (policiesError()) { <p class="validation-message">{{ policiesError() }}</p> }
+          @if (!policiesLoading() && !policiesError() && !activePolicies().length) { <p class="field-hint">No active {{ claimType.toLowerCase() }} policies are linked to your account.</p> }
           <label class="required-field">Market <select formControlName="market" [class.invalid-field]="showError('market')"><option value="">Select a market</option>@for (market of config.markets; track market) { <option [value]="market">{{ market }}</option> }</select>@if (showError('market')) { <small class="validation-message">{{ fieldError('market') }}</small> }</label>
           <label class="required-field">Claimant name <input formControlName="claimantName" placeholder="Full name" [class.invalid-field]="showError('claimantName')">@if (showError('claimantName')) { <small class="validation-message">{{ fieldError('claimantName') }}</small> }</label>
           <label class="required-field">Email address <input formControlName="claimantEmail" type="email" placeholder="you@example.com" [class.invalid-field]="showError('claimantEmail')">@if (showError('claimantEmail')) { <small class="validation-message">{{ fieldError('claimantEmail') }}</small> }</label>
@@ -164,6 +179,9 @@ export class ClaimFormPage implements OnInit {
   private readonly session = inject(SessionService);
   private readonly route = inject(ActivatedRoute);
   claimType: ClaimType = 'MOTOR';
+  readonly policies = signal<ClaimantPolicy[]>([]);
+  readonly policiesLoading = signal(false);
+  readonly policiesError = signal('');
   readonly options = signal<ClaimFormOptions | null>(null);
   readonly optionsLoading = signal(false);
   readonly optionsError = signal('');
@@ -201,6 +219,7 @@ export class ClaimFormPage implements OnInit {
   ngOnInit(): void {
     this.claimType = this.route.snapshot.data['claimType'] as ClaimType;
     this.loadOptions();
+    this.loadPolicies();
     if (this.claimType === 'MOTOR') {
       this.form.controls.vehicleRegistration.addValidators(Validators.required);
       this.form.controls.vehicleModel.addValidators(Validators.required);
@@ -216,6 +235,45 @@ export class ClaimFormPage implements OnInit {
       this.form.controls.areasAffected.updateValueAndValidity();
       this.form.controls.propertyType.updateValueAndValidity();
     }
+  }
+
+  activePolicies(): ClaimantPolicy[] {
+    return this.policies().filter(policy => policy.active && policy.claimType === this.claimType);
+  }
+
+  private loadPolicies(): void {
+    const email = this.session.user()?.email;
+    if (!email) {
+      this.policiesError.set('Your signed-in account does not include an email address.');
+      return;
+    }
+    this.policiesLoading.set(true);
+    this.api.getMyPolicies(email).subscribe({
+      next: policies => {
+        this.policies.set(policies);
+        this.policiesLoading.set(false);
+      },
+      error: error => {
+        this.policiesError.set(errorMessage(error));
+        this.policiesLoading.set(false);
+      },
+    });
+  }
+
+  onPolicySelected(event: Event): void {
+    const policyNumber = (event.target as HTMLSelectElement).value;
+    const policy = this.activePolicies().find(item => item.policyNumber === policyNumber);
+    if (!policy) {
+      return;
+    }
+    this.form.patchValue({
+      policyNumber: policy.policyNumber,
+      market: policy.market,
+      currency: policy.currency,
+      claimantName: policy.claimantName,
+      claimantEmail: policy.claimantEmail,
+      claimantPhone: policy.claimantPhone ?? '',
+    });
   }
 
   private loadOptions(): void {
@@ -356,6 +414,21 @@ export class ClaimFormPage implements OnInit {
   showError(name: string): boolean {
     const control = this.form.get(name);
     return !!control?.invalid && (!!control.touched || this.submitAttempted);
+  }
+
+  isAreaAffected(area: string): boolean {
+    return this.form.controls.areasAffected.value.includes(area);
+  }
+
+  toggleAffectedArea(area: string, event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const selected = this.form.controls.areasAffected.value;
+    const updated = target.checked
+      ? [...selected, area]
+      : selected.filter(value => value !== area);
+    this.form.controls.areasAffected.setValue(updated);
+    this.form.controls.areasAffected.markAsTouched();
   }
 
   fieldError(name: string): string {

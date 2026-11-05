@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   Claim,
+  ClaimantPolicy,
   ClaimFilters,
   ClaimFormOptions,
   ClaimHistory,
@@ -42,6 +43,11 @@ export class ClaimApiService {
   getMyClaims(email: string): Observable<Claim[]> {
     const params = new HttpParams().set('claimantEmail', email);
     return this.http.get<Claim[]>(`${environment.apiUrl}/claims`, { params });
+  }
+
+  getMyPolicies(email: string): Observable<ClaimantPolicy[]> {
+    const params = new HttpParams().set('claimantEmail', email);
+    return this.http.get<ClaimantPolicy[]>(`${environment.apiUrl}/claimant/policies`, { params });
   }
 
   getClaim(reference: string): Observable<Claim> {

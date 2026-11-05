@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { OfficerWorkload } from '../../core/models/claim';
 import { ClaimApiService } from '../../core/services/claim-api.service';
@@ -25,6 +25,7 @@ import { errorMessage } from '../../core/utils/error-message';
 })
 export class WorkloadPage implements OnInit {
   private readonly api = inject(ClaimApiService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   officers: OfficerWorkload[] = [];
   loading = false;
   error = '';
@@ -35,8 +36,8 @@ export class WorkloadPage implements OnInit {
     this.loading = true;
     this.error = '';
     this.api.getWorkload().subscribe({
-      next: result => { this.officers = result.officers; this.loading = false; },
-      error: error => { this.error = errorMessage(error); this.loading = false; },
+      next: result => { this.officers = result.officers; this.loading = false; this.changeDetector.markForCheck(); },
+      error: error => { this.error = errorMessage(error); this.loading = false; this.changeDetector.markForCheck(); },
     });
   }
 }

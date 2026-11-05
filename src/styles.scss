@@ -33,6 +33,9 @@ h1, h2, h3 { font-family: "Segoe UI", Arial, sans-serif; }
 .metric-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .metric-grid.staff-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .metric-card { background: #fff; border: 1px solid #e8edf2; border-radius: 8px; min-height: 115px; padding: 17px 18px; position: relative; }
+.policy-card { min-height: 150px; }
+.policy-status-button { background: #e9f6ee; border: 0; border-radius: 20px; color: #34855b; font-size: 11px; font-weight: 700; padding: 6px 12px; }
+.policy-status-button.inactive { background: #edf0f3; color: #6f7a84; }
 .metric-label { color: #738293; display: block; font-size: 10px; }
 .metric-card strong { color: #20354a; display: block; font-family: 'Manrope', sans-serif; font-size: 24px; letter-spacing: -.035em; margin-top: 8px; }
 .metric-card small { color: #a0aab3; display: block; font-size: 9px; margin-top: 3px; }
@@ -111,6 +114,14 @@ tbody tr:hover { background: #fbfcfd; }
 .amount-divider { align-self:center; background:#e2e7eb; height:22px; width:1px; }
 .amount-currency-field input.invalid-field,.amount-currency-field select.invalid-field { border:0 !important; box-shadow:none !important; }
 .choice-field.invalid-choice legend { color:#bb4944; }
+.affected-areas .field-hint { margin:0 0 10px; }
+.affected-area-options { display:grid; gap:9px; grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:11px; }
+.affected-area-option { align-items:center; background:#fff; border:1px solid #dfe5ea; border-radius:5px; color:#536678; cursor:pointer; display:flex !important; font-size:11px !important; font-weight:400 !important; gap:9px; margin:0 !important; min-height:40px; padding:9px 11px; transition:background .15s,border-color .15s; }
+.affected-area-option:has(input:checked) { background:#f0f7fc; border-color:#70a5ca; color:#245d82; }
+.affected-area-option input { accent-color:#1769a5; flex:0 0 auto; margin:0; min-height:auto; width:auto; }
+.affected-area-option span { line-height:1.35; }
+.affected-areas.invalid-choice .affected-area-option { border-color:#ce625d; }
+.affected-areas .validation-message { grid-column:1/-1; }
 .required-field .choice-field { margin-top:4px; }
 .field-hint { color:#8b98a3; display:block; font-size:9px; font-weight:400; margin-top:5px; }
 .file-intake { align-items:center; background:#f8fafb; border:1px dashed #d7e0e7; border-radius:6px; display:flex; flex-wrap:wrap; gap:13px; margin-top:20px; padding:13px; }.file-intake b { color:#415466; font-size:10px; }.file-intake p { color:#98a3ad; font-size:9px; margin:4px 0 0; }.file-button { background:#fff; border:1px solid #dfe6eb; border-radius:5px; color:#506579; cursor:pointer; font-size:9px; padding:8px 11px; }.file-button input { display:none; }.file-list { display:flex; flex-basis:100%; flex-wrap:wrap; gap:7px; }.file-list span { color:#678096; font-size:9px; }

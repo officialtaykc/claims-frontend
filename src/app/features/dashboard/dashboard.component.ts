@@ -1,7 +1,7 @@
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { Claim, ClaimStatus, DashboardSummary } from '../../core/models/claim';
+import { Claim, ClaimantPolicy, ClaimStatus, DashboardSummary } from '../../core/models/claim';
 import { ClaimApiService } from '../../core/services/claim-api.service';
 import { SessionService } from '../../core/services/session.service';
 import { errorMessage } from '../../core/utils/error-message';
@@ -36,6 +36,25 @@ import { errorMessage } from '../../core/utils/error-message';
       @if (error) { <div class="alert error">{{ error }}</div> }
       @if (loading) { <div class="loading-panel">Loading claims data…</div> }
       @if (isClaimant) {
+        <section class="panel">
+          <div class="panel-heading"><div><h2>My Policies</h2><p>Your active and previous policies</p></div></div>
+          @if (policiesLoading) { <div class="loading-panel">Loading your policies…</div> }
+          @if (policiesError) { <div class="alert error">{{ policiesError }}</div> }
+          @if (policies.length) {
+            <div class="overview-grid">
+              @for (policy of policies; track policy.id) {
+                <article class="metric-card policy-card">
+                  <div class="panel-heading"><div><span class="metric-label">{{ policy.productName }}</span><strong>{{ policy.policyNumber }}</strong></div><button class="policy-status-button" type="button" disabled [class.inactive]="!policy.active">{{ policy.active ? 'Active' : 'Inactive' }}</button></div>
+                  <p>{{ titleCase(policy.claimType) }} · {{ policy.market }}</p>
+                  @if (policy.insuredItem) { <p>{{ policy.insuredItem }}</p> }
+                  <small>Coverage {{ policy.coverageAmount | currency:policy.currency:'symbol':'1.0-0' }} · Valid to {{ policy.effectiveTo | date:'dd MMM yyyy' }}</small>
+                </article>
+              }
+            </div>
+          } @else if (!policiesLoading && !policiesError) {
+            <div class="empty-note">No policies are linked to your account.</div>
+          }
+        </section>
         <div class="metric-grid">
           <article class="metric-card"><span class="metric-label">Total claims</span><strong>{{ claims.length }}</strong><small>Submitted by you</small><span class="metric-symbol blue">▤</span></article>
           <article class="metric-card"><span class="metric-label">New claims</span><strong>{{ count('NEW') }}</strong><small>Recently submitted</small><span class="metric-symbol teal">◷</span></article>
@@ -100,8 +119,12 @@ export class DashboardPage implements OnInit {
   private readonly api = inject(ClaimApiService);
   private readonly session = inject(SessionService);
   private readonly route = inject(ActivatedRoute);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   readonly user = this.session.user;
   claims: Claim[] = [];
+  policies: ClaimantPolicy[] = [];
+  policiesLoading = false;
+  policiesError = '';
   summary: DashboardSummary | null = null;
   loading = false;
   error = '';
@@ -122,20 +145,34 @@ export class DashboardPage implements OnInit {
     this.loading = true;
     this.error = '';
     if (this.isClaimant) {
+      this.policiesLoading = true;
+      this.policiesError = '';
+      this.api.getMyPolicies(this.user()?.email ?? '').subscribe({
+        next: policies => {
+          this.policies = policies;
+          this.policiesLoading = false;
+          this.changeDetector.markForCheck();
+        },
+        error: err => {
+          this.policiesError = errorMessage(err);
+          this.policiesLoading = false;
+          this.changeDetector.markForCheck();
+        },
+      });
       this.api.getMyClaims(this.user()?.email ?? '').subscribe({
-        next: claims => { this.claims = claims; this.loading = false; },
-        error: err => { this.error = errorMessage(err); this.loading = false; },
+        next: claims => { this.claims = claims; this.loading = false; this.changeDetector.markForCheck(); },
+        error: err => { this.error = errorMessage(err); this.loading = false; this.changeDetector.markForCheck(); },
       });
       return;
     }
     this.api.getDashboardSummary().subscribe({
-      next: summary => { this.summary = summary; this.loading = false; },
-      error: err => { this.error = errorMessage(err); this.loading = false; },
+      next: summary => { this.summary = summary; this.loading = false; this.changeDetector.markForCheck(); },
+      error: err => { this.error = errorMessage(err); this.loading = false; this.changeDetector.markForCheck(); },
     });
     if (this.view !== 'exposure') {
       this.api.getStaffClaims().subscribe({
-        next: claims => { this.claims = claims; },
-        error: err => { this.error = errorMessage(err); },
+        next: claims => { this.claims = claims; this.changeDetector.markForCheck(); },
+        error: err => { this.error = errorMessage(err); this.changeDetector.markForCheck(); },
       });
     }
   }
